@@ -1,0 +1,39 @@
+Package: divaodv
+Title: ODV-Style Oceanographic Section Plots via DIVAnd Interpolation
+Version: 0.1.0
+Authors@R: 
+    person("Ilia", "Maidanik", , "imaidanik@gmail.com",
+           role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-6886-4225"))
+Description: Generates publication-quality Ocean Data View (ODV) style
+    depth-time section plots for oceanographic profile data. Uses the
+    DIVAnd (Data-Interpolating Variational Analysis) algorithm via Julia
+    to interpolate scattered observations onto a regular grid, then
+    renders filled-contour sections with ggplot2 and metR. Supports
+    configurable correlation lengths, signal-to-noise parameters, log
+    transforms for biological/chemical variables, and multiple colour
+    palettes including the classic ODV rainbow.
+License: MIT + file LICENSE
+URL: https://github.com/Imaidanik/divaodv
+BugReports: https://github.com/Imaidanik/divaodv/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+SystemRequirements: Julia (>= 1.6) with the DIVAnd.jl package installed.
+    See README for installation instructions.
+Imports: 
+    dplyr (>= 1.1.0),
+    ggplot2 (>= 3.4.0),
+    JuliaCall (>= 0.17.0),
+    lubridate (>= 1.9.0),
+    metR (>= 0.14.0),
+    rlang (>= 1.1.0),
+    scales (>= 1.2.0)
+Suggests: 
+    here,
+    knitr,
+    quarto,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    tidyverse
+VignetteBuilder: quarto

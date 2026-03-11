@@ -1,0 +1,228 @@
+---
+title: "Getting Started with divaodv"
+author: "Ilia Maidanik"
+date: "`r Sys.Date()`"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    code-fold: false
+    fig-width: 10
+    fig-height: 5
+    fig-dpi: 150
+vignette: >
+  %\VignetteIndexEntry{Getting Started with divaodv}
+  %\VignetteEngine{quarto::html}
+  %\VignetteEncoding{UTF-8}
+execute:
+  eval: false
+  echo: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(divaodv)
+```
+
+## Overview
+
+**divaodv** creates Ocean Data View (ODV) style depth × time section plots from
+scattered oceanographic profile data. It uses DIVAnd (Data-Interpolating
+Variational Analysis) via Julia to interpolate observations onto a regular grid,
+then renders the result with ggplot2.
+
+## Prerequisites
+
+Before using divaodv, you need Julia and DIVAnd.jl installed. Run the built-in
+check:
+
+```{r}
+#| label: setup-check
+diva_setup_check()
+```
+
+## Minimal example
+
+The package ships with a small temperature dataset from the NMP Gulf of Aqaba
+Station A monitoring programme:
+
+```{r}
+#| label: load-data
+df <- read.csv(system.file("extdata", "nmp_temp_200m.csv", package = "divaodv"))
+df$Date <- as.Date(df$Date)
+
+str(df)
+```
+
+The data frame needs three columns: `Date` (Date class), `depth` (numeric, metres),
+and at least one variable column.
+
+## Your first ODV plot
+
+```{r}
+#| label: basic-plot
+#| fig-cap: "Temperature section — Gulf of Aqaba, upper 200 m."
+p <- diva_plot_odv(
+  df         = df,
+  var        = "Temp",
+  time_corr  = 20,
+  depth_corr = 15,
+  epsilon2   = 0.01,
+  max_depth  = 200,
+  palette    = "odv"
+)
+print(p)
+```
+
+That's it — one function call from raw profiles to a publication-quality section
+plot.
+
+## Understanding the parameters
+
+### Correlation lengths
+
+The two most important parameters control how far DIVAnd smooths in each
+dimension:
+
+- **`time_corr`** — temporal correlation length in **days**. Larger values
+  produce smoother fields in time. For physical variables like temperature
+  (which change slowly), 15–30 days works well. For patchy biological variables
+  like chlorophyll, 5–10 days preserves mesoscale structure.
+
+- **`depth_corr`** — depth correlation length in **metres**. Controls vertical
+  smoothing. Typically 10–20 m for the upper water column.
+
+### Signal-to-noise ratio (ε²)
+
+`epsilon2` controls the balance between fitting observations and producing a
+smooth field. Smaller values (0.001–0.01) trust the data more; larger values
+(0.1–1.0) produce smoother fields. For quality-controlled monitoring data,
+0.01 is a good starting point.
+
+### Log transforms
+
+Many biological and chemical variables (chlorophyll, nutrients, cell counts)
+have right-skewed distributions. Setting `transform = "log"` applies a log
+transform before interpolation and back-transforms afterward:
+
+```{r}
+#| label: log-transform
+#| eval: false
+diva_plot_odv(df, "Chl_a_ug_L",
+              time_corr = 7, depth_corr = 10, epsilon2 = 0.02,
+              transform = "log")
+```
+
+## Grid resolution
+
+Two parameters control the interpolation grid density:
+
+```{r}
+#| label: coarse-grid
+#| fig-cap: "Coarse grid (weekly × 2 m) — fast preview."
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+              time_resolution = 52, depth_resolution = 2)
+```
+
+```{r}
+#| label: fine-grid
+#| fig-cap: "Fine grid (daily × 1 m) — publication quality."
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+              time_resolution = 365, depth_resolution = 1)
+```
+
+Start coarse for parameter tuning, then increase resolution for the final figure.
+
+## Customising the plot
+
+Since `diva_plot_odv()` returns a ggplot2 object, you can add layers:
+
+```{r}
+#| label: custom-plot
+#| fig-cap: "Customised temperature section."
+library(ggplot2)
+
+p <- diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+                   contour_binwidth = 2, label_binwidth = 2,
+                   title = "Sea Temperature — Gulf of Aqaba",
+                   fill_label = "T (°C)")
+
+p + theme(text = element_text(family = "serif"))
+```
+
+## Colour palettes
+
+Three built-in options:
+
+```{r}
+#| label: palettes
+#| eval: false
+# Classic ODV rainbow (default)
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15, palette = "odv")
+
+# Viridis (perceptually uniform, colourblind-safe)
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15, palette = "viridis")
+
+# Custom hex vector
+my_pal <- c("#2166ac", "#67a9cf", "#d1e5f0", "#fddbc7", "#ef8a62", "#b2182b")
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15, palette = my_pal)
+```
+
+## Extracting the grid
+
+Set `return_data = TRUE` to get the interpolated grid as a tibble instead of a
+plot — useful for further analysis or custom visualisation:
+
+```{r}
+#| label: return-data
+grid <- diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+                      return_data = TRUE)
+head(grid)
+```
+
+## Multi-variable workflows
+
+For projects with many variables, use `diva_variable_config()` to create
+reusable parameter sets:
+
+```{r}
+#| label: multi-var
+#| eval: false
+# Load the 12-variable NMP defaults
+cfg <- nmp_default_config()
+
+# Plot each variable
+for (v in names(cfg)) {
+  cv <- cfg[[v]]
+  p <- diva_plot_odv(
+    df         = my_data,
+    var        = cv$var,
+    time_corr  = cv$time_corr,
+    depth_corr = cv$depth_corr,
+    epsilon2   = cv$epsilon2,
+    transform  = cv$transform
+  )
+  print(p)
+}
+```
+
+## How the metric tensor works
+
+A common pitfall when using DIVAnd is setting the metric tensor (`pmn`) to
+all ones. This tells DIVAnd that each grid cell is 1 × 1 in physical units,
+regardless of actual spacing — which breaks the correlation length
+interpretation and produces vertical-stripe artefacts.
+
+divaodv computes `pmn` correctly from the actual grid spacing:
+
+```
+dz = max_depth / (n_depth - 1)     # metres per cell
+dt = max_time  / (n_time  - 1)     # years per cell
+pm = 1 / dz                        # points per metre
+pn = 1 / dt                        # points per year
+```
+
+This means correlation lengths are always honoured regardless of grid
+resolution — you can change `time_resolution` from 365 to 52 without
+affecting the physical smoothing behaviour.
