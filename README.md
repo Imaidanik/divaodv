@@ -15,7 +15,7 @@ observations onto a regular grid, then renders filled-contour sections with
 [metR](https://eliocamp.github.io/metR/).
 
 <!-- screenshot placeholder — replace with your actual plot -->
-<!-- ![Temperature section — Gulf of Aqaba 2004–2014](man/figures/temp_200m_example.png) -->
+!-- ![Temperature section — Gulf of Aqaba 2004–2014](man/figures/temp_200m_example.png) --
 
 ## Features
 
