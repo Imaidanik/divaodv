@@ -48,7 +48,7 @@ divaodv requires a working Julia installation with DIVAnd.jl:
 
 ```r
 # install.packages("remotes")
-remotes::install_github("YOUR-USERNAME/divaodv")
+remotes::install_github("Imaidanik/divaodv")
 ```
 
 ## Quick start
