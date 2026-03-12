@@ -67,28 +67,28 @@ utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value"))
 #' @return A \code{ggplot} object, or a tibble when \code{return_data = TRUE}.
 #' @export
 diva_plot_odv <- function(df,
-                           var,
-                           time_corr        = 15,
-                           depth_corr       = 10,
-                           epsilon2         = 0.01,
-                           transform        = "none",
-                           max_depth        = NULL,
-                           depth_resolution = 1,
-                           time_resolution  = 365,
-                           log_constant     = 1e-10,
-                           palette          = "odv",
-                           mask_beyond_corr = FALSE,
-                           contour_binwidth = 1,
-                           label_binwidth   = NULL,
-                           label_gap        = 0,
-                           sample_points    = TRUE,
-                           zlim             = NULL,
-                           title            = NULL,
-                           y_label          = "Depth (m)",
-                           x_label          = NULL,
-                           fill_label       = NULL,
-                           return_data      = FALSE,
-                           verbose          = TRUE) {
+                          var,
+                          time_corr        = 15,
+                          depth_corr       = 10,
+                          epsilon2         = 0.01,
+                          transform        = "none",
+                          max_depth        = NULL,
+                          depth_resolution = 1,
+                          time_resolution  = 365,
+                          log_constant     = 1e-10,
+                          palette          = "odv",
+                          mask_beyond_corr = FALSE,
+                          contour_binwidth = 1,
+                          label_binwidth   = NULL,
+                          label_gap        = 0,
+                          sample_points    = TRUE,
+                          zlim             = NULL,
+                          title            = NULL,
+                          y_label          = "Depth (m)",
+                          x_label          = NULL,
+                          fill_label       = NULL,
+                          return_data      = FALSE,
+                          verbose          = TRUE) {
 
   # ── 0. Guards --------------------------------------------------------------
   if (!var %in% names(df))
@@ -212,7 +212,7 @@ diva_plot_odv <- function(df,
     value   = JuliaCall::julia_eval("vec(_odv_final)")
   ) |>
     dplyr::mutate(
-      Date = lubridate::as_date(min_date_r + as.integer(round(time_yr * 365)))
+      Date = min_date_r + time_yr * 365.0
     )
 
   # ── 9. Mask outside correlation envelope (optional) ----------------------
