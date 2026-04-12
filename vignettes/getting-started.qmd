@@ -64,13 +64,14 @@ and at least one variable column.
 #| label: basic-plot
 #| fig-cap: "Temperature section — Gulf of Aqaba, upper 200 m."
 p <- diva_plot_odv(
-  df         = df,
-  var        = "Temp",
-  time_corr  = 20,
-  depth_corr = 15,
-  epsilon2   = 0.01,
-  max_depth  = 200,
-  palette    = "odv"
+  df           = df,
+  var          = "Temp",
+  time_corr    = 20,
+  depth_corr   = 15,
+  epsilon2     = 0.01,
+  max_depth    = 200,
+  palette      = "odv",
+  add_contours = TRUE
 )
 print(p)
 ```
@@ -114,6 +115,25 @@ diva_plot_odv(df, "Chl_a_ug_L",
               transform = "log")
 ```
 
+## Contour lines
+
+By default, `diva_plot_odv()` renders the raster fill without contour
+overlays. Set `add_contours = TRUE` to add contour lines and labels:
+
+```{r}
+#| label: contours
+#| eval: false
+# Without contours (default)
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15)
+
+# With contour lines and labels
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+              add_contours = TRUE, contour_binwidth = 2, label_binwidth = 2)
+```
+
+When contours are enabled, `contour_binwidth` and `label_binwidth` control
+the line spacing and label density respectively.
+
 ## Grid resolution
 
 Two parameters control the interpolation grid density:
@@ -144,6 +164,7 @@ Since `diva_plot_odv()` returns a ggplot2 object, you can add layers:
 library(ggplot2)
 
 p <- diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+                   add_contours = TRUE,
                    contour_binwidth = 2, label_binwidth = 2,
                    title = "Sea Temperature — Gulf of Aqaba",
                    fill_label = "T (°C)")

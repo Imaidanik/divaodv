@@ -56,6 +56,8 @@ utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value"))
 #'   \code{metR::geom_text_contour(skip)}. Default 0 (no extra skipping).
 #' @param sample_points Logical. Overlay observation locations as small black
 #'   dots. Default TRUE.
+#' @param add_contours Logical. Add contour lines and contour labels to the
+#'   plot. Default FALSE.
 #' @param zlim Numeric(2) or NULL. Colour scale limits.
 #' @param title Character or NULL. Plot title; defaults to \code{var}.
 #' @param y_label Character. Y-axis label. Default \code{"Depth (m)"}.
@@ -82,6 +84,7 @@ diva_plot_odv <- function(df,
                           label_binwidth   = NULL,
                           label_gap        = 0,
                           sample_points    = TRUE,
+                          add_contours     = FALSE,
                           zlim             = NULL,
                           title            = NULL,
                           y_label          = "Depth (m)",
@@ -271,21 +274,25 @@ diva_plot_odv <- function(df,
       )
     } +
 
-    # Contour lines
-    ggplot2::geom_contour(
-      ggplot2::aes(z = .data[[var]]),
-      binwidth = contour_binwidth,
-      colour   = "black",
-      alpha    = 0.8
-    ) +
+    # Contour lines (conditional)
+    {if (add_contours)
+      ggplot2::geom_contour(
+        ggplot2::aes(z = .data[[var]]),
+        binwidth = contour_binwidth,
+        colour   = "black",
+        alpha    = 0.8
+      )
+    } +
 
-    # Contour labels
-    metR::geom_text_contour(
-      ggplot2::aes(z = .data[[var]]),
-      binwidth = label_binwidth,
-      stroke   = 0.025,
-      skip     = label_gap
-    ) +
+    # Contour labels (conditional)
+    {if (add_contours)
+      metR::geom_text_contour(
+        ggplot2::aes(z = .data[[var]]),
+        binwidth = label_binwidth,
+        stroke   = 0.025,
+        skip     = label_gap
+      )
+    } +
 
     # Colour scale
     ggplot2::scale_fill_gradientn(

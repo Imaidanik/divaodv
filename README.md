@@ -23,7 +23,7 @@ observations onto a regular grid, then renders filled-contour sections with
 - **DIVAnd interpolation** with configurable correlation lengths, ε², and log transforms
 - **Correct metric tensor** (`pmn`) computation — correlation lengths are honoured at any grid resolution
 - **ODV rainbow palette** or viridis / custom colour scales
-- **Contour lines + labels** via `metR::geom_text_contour()` with adjustable binwidth and label density
+- **Optional contour lines + labels** via `metR::geom_text_contour()` with adjustable binwidth and label density (`add_contours = TRUE`)
 - **Observation overlay** showing original sampling locations as dots
 - **Flexible grid resolution** via `depth_resolution` and `time_resolution` parameters
 - **Returns a ggplot2 object** — fully customisable with standard ggplot layers
@@ -62,13 +62,14 @@ df$Date <- as.Date(df$Date)
 
 # One-liner: interpolate + plot
 p <- diva_plot_odv(
-  df        = df,
-  var       = "Temp",
-  time_corr = 20,         # temporal correlation length (days)
-  depth_corr = 15,        # depth correlation length (metres)
-  epsilon2  = 0.01,       # signal-to-noise ratio
-  max_depth = 200,
-  palette   = "odv"       # classic ODV rainbow
+  df           = df,
+  var          = "Temp",
+  time_corr    = 20,         # temporal correlation length (days)
+  depth_corr   = 15,        # depth correlation length (metres)
+  epsilon2     = 0.01,       # signal-to-noise ratio
+  max_depth    = 200,
+  palette      = "odv",      # classic ODV rainbow
+  add_contours = TRUE        # overlay contour lines + labels
 )
 print(p)
 ```
@@ -123,6 +124,7 @@ diva_plot_odv(
   df, "Temp",
   time_corr        = 20,
   depth_corr       = 15,
+  add_contours     = TRUE,  # enable contour overlay
   contour_binwidth = 2,     # contour lines every 2 units
   label_binwidth   = 2,     # labels every 2 units
   label_gap        = 0,     # skip parameter for label thinning
