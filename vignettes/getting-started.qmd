@@ -15,8 +15,9 @@ vignette: >
   %\VignetteEngine{quarto::html}
   %\VignetteEncoding{UTF-8}
 execute:
-  eval: false
+  eval: true
   echo: true
+  cache: true
 ---
 
 ```{r}
@@ -64,14 +65,13 @@ and at least one variable column.
 #| label: basic-plot
 #| fig-cap: "Temperature section — Gulf of Aqaba, upper 200 m."
 p <- diva_plot_odv(
-  df           = df,
-  var          = "Temp",
-  time_corr    = 20,
-  depth_corr   = 15,
-  epsilon2     = 0.01,
-  max_depth    = 200,
-  palette      = "odv",
-  add_contours = TRUE
+  df         = df,
+  var        = "Temp",
+  time_corr  = 20,
+  depth_corr = 15,
+  epsilon2   = 0.01,
+  max_depth  = 200,
+  palette    = "odv"
 )
 print(p)
 ```
@@ -115,25 +115,6 @@ diva_plot_odv(df, "Chl_a_ug_L",
               transform = "log")
 ```
 
-## Contour lines
-
-By default, `diva_plot_odv()` renders the raster fill without contour
-overlays. Set `add_contours = TRUE` to add contour lines and labels:
-
-```{r}
-#| label: contours
-#| eval: false
-# Without contours (default)
-diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15)
-
-# With contour lines and labels
-diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
-              add_contours = TRUE, contour_binwidth = 2, label_binwidth = 2)
-```
-
-When contours are enabled, `contour_binwidth` and `label_binwidth` control
-the line spacing and label density respectively.
-
 ## Grid resolution
 
 Two parameters control the interpolation grid density:
@@ -148,6 +129,7 @@ diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
 ```{r}
 #| label: fine-grid
 #| fig-cap: "Fine grid (daily × 1 m) — publication quality."
+# Largest grid in this vignette; chunk caching keeps re-renders cheap.
 diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
               time_resolution = 365, depth_resolution = 1)
 ```
@@ -164,7 +146,6 @@ Since `diva_plot_odv()` returns a ggplot2 object, you can add layers:
 library(ggplot2)
 
 p <- diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
-                   add_contours = TRUE,
                    contour_binwidth = 2, label_binwidth = 2,
                    title = "Sea Temperature — Gulf of Aqaba",
                    fill_label = "T (°C)")
@@ -188,6 +169,86 @@ diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15, palette = "viridis")
 # Custom hex vector
 my_pal <- c("#2166ac", "#67a9cf", "#d1e5f0", "#fddbc7", "#ef8a62", "#b2182b")
 diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15, palette = my_pal)
+```
+
+## ODV-style colour mapping {#sec-colour-mapping}
+
+A linear colour scale wastes most of the palette when a variable is strongly
+skewed — nutrients, chlorophyll and cell counts typically are. Ocean Data
+View solves this with two sliders on its Color Mapping tab, and
+`scale_fill_odv()` reproduces their effect:
+
+- **`median`** — the position within the colour range that receives the
+  middle colour. Below 0.5 gives more of the palette to high values; above
+  0.5, to low values.
+- **`nonlinearity`** — how sharply resolution concentrates around that
+  median, at the expense of the range extremes. 0 is linear.
+
+```{r}
+#| label: colour-mapping-params
+cm_median <- 0.35   # where in the range the middle colour sits
+cm_nonlin <- 0.6    # how hard to concentrate resolution there
+```
+
+Interpolate once:
+
+```{r}
+#| label: fig-colour-linear
+#| fig-cap: "Default linear colour mapping. Palette steps are evenly spaced across the value range."
+p <- diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+                   zlim = c(18, 28), fill_label = "T (°C)")
+p
+```
+
+Then recolour it:
+
+```{r}
+#| label: fig-colour-odv
+#| fig-cap: !expr sprintf("ODV-style mapping with median = %s and nonlinearity = %s. Colour resolution concentrates around the shifted midpoint.", cm_median, cm_nonlin)
+p + scale_fill_odv(median = cm_median, nonlinearity = cm_nonlin)
+```
+
+Comparing @fig-colour-linear with @fig-colour-odv: both show the *same*
+interpolated field over the same limits, and both colourbars carry the same
+evenly spaced, round-numbered ticks. What changes is where the palette spends
+its resolution. Setting `median` to `r cm_median` moves the middle colour
+below the centre of the range, and `nonlinearity` at `r cm_nonlin` steepens
+the transfer curve there, so gradients near the thermocline separate into
+distinct bands instead of compressing into one or two.
+
+The ticks stay linear in @fig-colour-odv. Only the colour stops move, which is
+what keeps the legend readable — a transformed axis would instead bunch the
+labels. Contours are unaffected and stay under `contour_binwidth`, mirroring
+ODV's separate Contours tab.
+
+The important property is visible in the two chunks above: DIVAnd ran **once**.
+`scale_fill_odv()` operates on the finished ggplot object, so every recolour
+after that is instant and you can sweep parameters as fast as you would drag
+the ODV sliders.
+
+```{r}
+#| label: fig-colour-sweep
+#| fig-cap: "Rising nonlinearity at a fixed median. No re-interpolation between panels."
+#| fig-height: 8
+#| echo: true
+for (nl in c(0, 0.3, 0.6, 0.9)) {
+  print(p + scale_fill_odv(median = cm_median, nonlinearity = nl) +
+          ggtitle(sprintf("nonlinearity = %.1f", nl)))
+}
+```
+
+The host plot's `zlim`, `palette` and `fill_label` are inherited, so a bare
+`scale_fill_odv(median = 0.35)` will not silently reset them. Pass any of
+them explicitly to override.
+
+Once you have settled on values, fold them into the original call — the two
+arguments below are equivalent to adding the scale afterwards:
+
+```{r}
+#| label: colour-mapping-inline
+#| eval: false
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+              colour_median = 0.35, colour_nonlinearity = 0.6)
 ```
 
 ## Extracting the grid

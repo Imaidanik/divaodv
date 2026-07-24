@@ -63,6 +63,12 @@ utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value"))
 #' @param y_label Character. Y-axis label. Default \code{"Depth (m)"}.
 #' @param x_label Character. X-axis label. Default \code{NULL} (no label).
 #' @param fill_label Character. Legend title. Default \code{var}.
+#' @param colour_median Numeric in [0, 1]. Position within the colour range
+#'   that maps to the middle of the palette. Default 0.5 (linear). See
+#'   \code{\link{scale_fill_odv}}.
+#' @param colour_nonlinearity Numeric in [0, 1]. Strength of the ODV-style
+#'   S-curve; higher values concentrate palette resolution around
+#'   \code{colour_median}. Default 0 (linear).
 #' @param return_data Logical. Return grid tibble instead of plot. Default FALSE.
 #' @param verbose Logical. Print progress. Default TRUE.
 #'
@@ -90,6 +96,8 @@ diva_plot_odv <- function(df,
                           y_label          = "Depth (m)",
                           x_label          = NULL,
                           fill_label       = NULL,
+                          colour_median    = 0.5,
+                          colour_nonlinearity = 0,
                           return_data      = FALSE,
                           verbose          = TRUE) {
 
@@ -244,17 +252,10 @@ diva_plot_odv <- function(df,
     dplyr::mutate(Date = lubridate::as_date(Date)) |>
     dplyr::distinct()
 
-  # ── 11. Colour palette (reversed — cold = blue, warm = red) --------------
-  fill_colours <- rev(
-    if (identical(palette, "odv")) {
-      .odv_colours
-    } else if (identical(palette, "viridis")) {
-      scales::viridis_pal()(11)
-    } else {
-      palette
-    }
-  )
-
+  # ── 11. Colour scale limits ----------------------------------------------
+  # Palette resolution and the ODV transfer curve now live in
+  # .odv_build_scale() (scale_fill_odv.R), so a plot's fill scale can be
+  # replaced later without re-running DIVAnd.
   if (is.null(zlim)) zlim <- range(grid_df[[var]], na.rm = TRUE)
 
   # ── 12. Build ggplot (matching original ODV style) -----------------------
@@ -294,14 +295,19 @@ diva_plot_odv <- function(df,
       )
     } +
 
-    # Colour scale
-    ggplot2::scale_fill_gradientn(
-      colours  = fill_colours,
-      limits   = zlim,
-      na.value = "white",
-      name     = fill_label,
-      oob      = scales::squish
-    ) +
+    # Colour scale — ODV-style mapping; identity curve at the defaults
+    .odv_build_scale(list(
+      palette      = palette,
+      median       = colour_median,
+      nonlinearity = colour_nonlinearity,
+      limits       = zlim,
+      name         = fill_label,
+      n_colours    = 256,
+      reverse      = TRUE,
+      oob          = scales::squish,
+      na.value     = "white",
+      extra        = list()
+    )) +
 
     # Axes
     ggplot2::scale_y_reverse() +
@@ -321,6 +327,16 @@ diva_plot_odv <- function(df,
       panel.grid.minor  = ggplot2::element_blank(),
       legend.key.height = ggplot2::unit(1.5, "cm")
     )
+
+  # ── 13. Stash fill settings for scale_fill_odv() inheritance -------------
+  # Lets `p + scale_fill_odv(median = 0.35)` keep this plot's zlim, palette
+  # and legend title instead of silently reverting them.
+  attr(p, "divaodv_fill") <- list(
+    palette = palette,
+    limits  = zlim,
+    name    = fill_label,
+    reverse = TRUE
+  )
 
   p
 }
