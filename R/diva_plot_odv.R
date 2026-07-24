@@ -63,10 +63,10 @@ utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value"))
 #' @param y_label Character. Y-axis label. Default \code{"Depth (m)"}.
 #' @param x_label Character. X-axis label. Default \code{NULL} (no label).
 #' @param fill_label Character. Legend title. Default \code{var}.
-#' @param colour_median Numeric in [0, 1]. Position within the colour range
+#' @param colour_median Numeric in \[0, 1\]. Position within the colour range
 #'   that maps to the middle of the palette. Default 0.5 (linear). See
 #'   \code{\link{scale_fill_odv}}.
-#' @param colour_nonlinearity Numeric in [0, 1]. Strength of the ODV-style
+#' @param colour_nonlinearity Numeric in \[0, 1\]. Strength of the ODV-style
 #'   S-curve; higher values concentrate palette resolution around
 #'   \code{colour_median}. Default 0 (linear).
 #' @param return_data Logical. Return grid tibble instead of plot. Default FALSE.

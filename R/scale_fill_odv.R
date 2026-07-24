@@ -77,7 +77,7 @@ NULL
 #' Colour stop positions for an ODV-style mapping (internal)
 #'
 #' Returns the \code{values} vector for \code{scale_fill_gradientn()}: the
-#' position in rescaled [0,1] data space at which each of \code{n_colours}
+#' position in rescaled \[0,1\] data space at which each of \code{n_colours}
 #' evenly indexed palette colours should sit.
 #'
 #' @noRd
@@ -140,11 +140,11 @@ NULL
 #' @param palette Character or vector, or NULL. \code{"odv"}, \code{"viridis"},
 #'   or a custom hex colour vector. \code{NULL} (default) inherits from the
 #'   \code{diva_plot_odv()} plot being added to, falling back to \code{"odv"}.
-#' @param median Numeric in [0, 1]. Position within the colour range that maps
+#' @param median Numeric in \[0, 1\]. Position within the colour range that maps
 #'   to the middle of the palette. Default 0.5 (no shift). Values below 0.5
 #'   give more palette to the upper part of the range; above 0.5, to the lower
-#'   part. Clamped to [0.01, 0.99].
-#' @param nonlinearity Numeric in [0, 1]. Strength of the S-curve. Default 0
+#'   part. Clamped to \[0.01, 0.99\].
+#' @param nonlinearity Numeric in \[0, 1\]. Strength of the S-curve. Default 0
 #'   (linear). Higher values concentrate palette resolution around
 #'   \code{median} at the expense of the range extremes.
 #' @param limits Numeric(2) or NULL. Colour scale limits. \code{NULL} (default)

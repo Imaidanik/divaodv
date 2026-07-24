@@ -21,11 +21,14 @@ diva_plot_odv(
   label_binwidth = NULL,
   label_gap = 0,
   sample_points = TRUE,
+  add_contours = FALSE,
   zlim = NULL,
   title = NULL,
   y_label = "Depth (m)",
   x_label = NULL,
   fill_label = NULL,
+  colour_median = 0.5,
+  colour_nonlinearity = 0,
   return_data = FALSE,
   verbose = TRUE
 )
@@ -74,6 +77,9 @@ multiple of \code{contour_binwidth}). Default same as
 \item{sample_points}{Logical. Overlay observation locations as small black
 dots. Default TRUE.}
 
+\item{add_contours}{Logical. Add contour lines and contour labels to the
+plot. Default FALSE.}
+
 \item{zlim}{Numeric(2) or NULL. Colour scale limits.}
 
 \item{title}{Character or NULL. Plot title; defaults to \code{var}.}
@@ -83,6 +89,14 @@ dots. Default TRUE.}
 \item{x_label}{Character. X-axis label. Default \code{NULL} (no label).}
 
 \item{fill_label}{Character. Legend title. Default \code{var}.}
+
+\item{colour_median}{Numeric in [0, 1]. Position within the colour range
+that maps to the middle of the palette. Default 0.5 (linear). See
+\code{\link{scale_fill_odv}}.}
+
+\item{colour_nonlinearity}{Numeric in [0, 1]. Strength of the ODV-style
+S-curve; higher values concentrate palette resolution around
+\code{colour_median}. Default 0 (linear).}
 
 \item{return_data}{Logical. Return grid tibble instead of plot. Default FALSE.}
 
