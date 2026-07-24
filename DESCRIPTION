@@ -24,6 +24,7 @@ SystemRequirements: Julia (>= 1.6) with the DIVAnd.jl package installed.
 Imports: 
     dplyr (>= 1.1.0),
     ggplot2 (>= 3.4.0),
+    grDevices,
     JuliaCall (>= 0.17.0),
     lubridate (>= 1.9.0),
     metR (>= 0.14.0),
