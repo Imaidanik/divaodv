@@ -182,6 +182,29 @@ legend ticks remain evenly spaced and round-numbered while the colour
 distribution inside the bar becomes non-uniform. Contour placement is
 independent, as it is in ODV, and stays under `contour_binwidth`.
 
+
+### Automatic mapping
+
+`odv_auto_map()` fits `median` and `nonlinearity` from the interpolated field —
+the palette midpoint is placed at the data median and the S-curve is matched to
+the field's empirical CDF (histogram equalisation). Let the scale fit itself
+with the `"auto"` sentinel (no re-interpolation):
+
+```r
+p <- diva_plot_odv(df, "PO4", time_corr = 15, depth_corr = 10, zlim = c(0, 2))
+p + scale_fill_odv(median = "auto", nonlinearity = "auto")
+
+# Or inspect the fitted values:
+grid <- diva_plot_odv(df, "PO4", time_corr = 15, depth_corr = 10,
+                      return_data = TRUE)
+odv_auto_map(grid$PO4, limits = c(0, 2))
+#>       median nonlinearity
+#>        0.100        0.810
+```
+
+`diva_plot_odv(colour_median = "auto", colour_nonlinearity = "auto")` applies
+the same fit at build time.
+
 ## Getting the grid data
 
 ```r

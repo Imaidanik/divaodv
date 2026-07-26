@@ -251,6 +251,42 @@ diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
               colour_median = 0.35, colour_nonlinearity = 0.6)
 ```
 
+### Automatic colour mapping {#sec-auto-colour}
+
+Rather than tuning `median` and `nonlinearity` by eye, `odv_auto_map()` derives
+both from the interpolated field. It treats the ODV transfer curve as a
+two-parameter fit to the data's empirical distribution (histogram
+equalisation): the palette midpoint is placed at the field's median, and the
+S-curve strength is chosen so the curve tracks the empirical CDF.
+
+```{r}
+#| label: auto-colour-fit
+#| include: false
+grid_temp <- diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+                           return_data = TRUE)
+auto_fit  <- odv_auto_map(grid_temp$Temp)
+auto_med  <- round(unname(auto_fit["median"]), 2)
+auto_nl   <- round(unname(auto_fit["nonlinearity"]), 2)
+```
+
+For this temperature field the fit returns a median of `r auto_med` and a
+nonlinearity of `r auto_nl`. You can read those values off directly, or let the
+scale fit itself from the plot's own grid with the `"auto"` sentinel --- no
+re-interpolation, exactly as in @sec-colour-mapping:
+
+```{r}
+#| label: fig-colour-auto
+#| fig-cap: "Temperature section with an automatically fitted ODV colour map."
+p <- diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15)
+p + scale_fill_odv(median = "auto", nonlinearity = "auto")
+```
+
+`"auto"` works per parameter: fix one and fit the other, e.g.
+`scale_fill_odv(median = 0.5, nonlinearity = "auto")`. `diva_plot_odv()` accepts
+the same sentinel via `colour_median` / `colour_nonlinearity`. For an
+optimiser-free estimate on very large grids, pass `method = "iqr"` to
+`odv_auto_map()`.
+
 ## Contour control {#sec-contours}
 
 Contours are off by default. They can be set when the plot is built, or added

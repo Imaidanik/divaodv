@@ -22,14 +22,18 @@ scale_fill_odv(
 or a custom hex colour vector. \code{NULL} (default) inherits from the
 \code{diva_plot_odv()} plot being added to, falling back to \code{"odv"}.}
 
-\item{median}{Numeric in [0, 1]. Position within the colour range that maps
-to the middle of the palette. Default 0.5 (no shift). Values below 0.5
-give more palette to the upper part of the range; above 0.5, to the lower
-part. Clamped to [0.01, 0.99].}
+\item{median}{Numeric in [0, 1], or \code{"auto"}. Position within the
+colour range that maps to the middle of the palette. Default 0.5 (no
+shift). Values below 0.5 give more palette to the upper part of the range;
+above 0.5, to the lower part. Clamped to [0.01, 0.99]. \code{"auto"}
+places the midpoint at the interpolated grid's median, resolved when the
+scale is added to the plot; see \code{\link{odv_auto_map}}.}
 
-\item{nonlinearity}{Numeric in [0, 1]. Strength of the S-curve. Default 0
-(linear). Higher values concentrate palette resolution around
-\code{median} at the expense of the range extremes.}
+\item{nonlinearity}{Numeric in [0, 1], or \code{"auto"}. Strength of the
+S-curve. Default 0 (linear). Higher values concentrate palette resolution
+around \code{median} at the expense of the range extremes. \code{"auto"}
+fits the value that best matches the grid's empirical CDF (histogram
+equalisation); see \code{\link{odv_auto_map}}.}
 
 \item{limits}{Numeric(2) or NULL. Colour scale limits. \code{NULL} (default)
 inherits the \code{zlim} of the plot being added to, falling back to the
