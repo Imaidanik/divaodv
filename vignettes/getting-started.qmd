@@ -251,6 +251,61 @@ diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
               colour_median = 0.35, colour_nonlinearity = 0.6)
 ```
 
+## Contour control {#sec-contours}
+
+Contours are off by default. They can be set when the plot is built, or added
+to a finished plot the same way colour mapping is — and for the same reason,
+adding them costs nothing:
+
+```{r}
+#| label: contour-breaks
+cn_breaks <- c(20, 22, 24, 26)
+```
+
+```{r}
+#| label: fig-contours-breaks
+#| fig-cap: !expr sprintf("Explicit contour levels at %s.", paste(cn_breaks, collapse = ", "))
+p + odv_contours(breaks = cn_breaks)
+```
+
+`p` here is the plot interpolated back in @sec-colour-mapping. Contours at
+`r paste(cn_breaks, collapse = ", ")` °C are drawn onto it without touching
+DIVAnd.
+
+Even spacing works too, and the two forms are mutually exclusive — `breaks`
+wins if you pass both, with a warning:
+
+```{r}
+#| label: fig-contours-binwidth
+#| fig-cap: "Even contour spacing at 2 °C intervals, labels suppressed."
+p + odv_contours(binwidth = 2, labels = FALSE)
+```
+
+`odv_contours()` *replaces* whatever contours are already on the plot rather
+than adding a second set, so you can call it repeatedly while tuning without
+accumulating layers. To take them off entirely:
+
+```{r}
+#| label: fig-contours-removed
+#| fig-cap: "Contours stripped; raster, sample points, scales and theme untouched."
+p + odv_contours(breaks = cn_breaks) + odv_contours_remove()
+```
+
+Removal is by geom class, so contour layers you added by hand come off too.
+
+Contours can also be fixed at build time, which is the right place for them
+once you have settled on levels:
+
+```{r}
+#| label: contours-inline
+#| eval: false
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+              add_contours = TRUE, contour_breaks = c(20, 22, 24, 26))
+```
+
+Both routes build their layers with the same internal helper, so a plot's
+contours are identical whichever you use.
+
 ## Extracting the grid
 
 Set `return_data = TRUE` to get the interpolated grid as a tibble instead of a

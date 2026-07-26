@@ -49,6 +49,9 @@ utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value"))
 #'   ±\code{time_corr}-day observation envelope. Default FALSE.
 #' @param contour_binwidth Numeric. Binwidth for \code{geom_contour} and
 #'   \code{geom_text_contour}. Default 1.
+#' @param contour_breaks Numeric vector or NULL. Explicit contour levels.
+#'   Takes precedence over \code{contour_binwidth}. See
+#'   \code{\link{odv_contours}} to set these on a finished plot.
 #' @param label_binwidth Numeric. Binwidth for contour labels (should be a
 #'   multiple of \code{contour_binwidth}). Default same as
 #'   \code{contour_binwidth}.
@@ -87,6 +90,7 @@ diva_plot_odv <- function(df,
                           palette          = "odv",
                           mask_beyond_corr = FALSE,
                           contour_binwidth = 1,
+                          contour_breaks   = NULL,
                           label_binwidth   = NULL,
                           label_gap        = 0,
                           sample_points    = TRUE,
@@ -275,23 +279,17 @@ diva_plot_odv <- function(df,
       )
     } +
 
-    # Contour lines (conditional)
+    # Contour lines + labels (conditional).
+    # Built by the same helper odv_contours() uses, so a plot's contours are
+    # identical whether set here or added afterwards.
     {if (add_contours)
-      ggplot2::geom_contour(
-        ggplot2::aes(z = .data[[var]]),
-        binwidth = contour_binwidth,
-        colour   = "black",
-        alpha    = 0.8
-      )
-    } +
-
-    # Contour labels (conditional)
-    {if (add_contours)
-      metR::geom_text_contour(
-        ggplot2::aes(z = .data[[var]]),
-        binwidth = label_binwidth,
-        stroke   = 0.025,
-        skip     = label_gap
+      .odv_contour_layers(
+        var            = var,
+        breaks         = contour_breaks,
+        binwidth       = contour_binwidth,
+        labels         = TRUE,
+        label_binwidth = if (is.null(contour_breaks)) label_binwidth else NULL,
+        label_gap      = label_gap
       )
     } +
 
@@ -335,7 +333,8 @@ diva_plot_odv <- function(df,
     palette = palette,
     limits  = zlim,
     name    = fill_label,
-    reverse = TRUE
+    reverse = TRUE,
+    var     = var
   )
 
   p

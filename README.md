@@ -23,7 +23,9 @@ observations onto a regular grid, then renders filled-contour sections with
 - **DIVAnd interpolation** with configurable correlation lengths, ε², and log transforms
 - **Correct metric tensor** (`pmn`) computation — correlation lengths are honoured at any grid resolution
 - **ODV rainbow palette** or viridis / custom colour scales
-- **Optional contour lines + labels** via `metR::geom_text_contour()` with adjustable binwidth and label density (`add_contours = TRUE`)
+- **Post-hoc contour control** via `odv_contours()` / `odv_contours_remove()` — explicit levels or even spacing, set or stripped without re-interpolating
+- **ODV-style nonlinear colour mapping** via `scale_fill_odv()` — median and nonlinearity controls, applied without re-running DIVAnd
+- **Contour lines + labels** via `metR::geom_text_contour()` with adjustable binwidth and label density
 - **Observation overlay** showing original sampling locations as dots
 - **Flexible grid resolution** via `depth_resolution` and `time_resolution` parameters
 - **Returns a ggplot2 object** — fully customisable with standard ggplot layers
@@ -62,14 +64,13 @@ df$Date <- as.Date(df$Date)
 
 # One-liner: interpolate + plot
 p <- diva_plot_odv(
-  df           = df,
-  var          = "Temp",
-  time_corr    = 20,         # temporal correlation length (days)
-  depth_corr   = 15,        # depth correlation length (metres)
-  epsilon2     = 0.01,       # signal-to-noise ratio
-  max_depth    = 200,
-  palette      = "odv",      # classic ODV rainbow
-  add_contours = TRUE        # overlay contour lines + labels
+  df        = df,
+  var       = "Temp",
+  time_corr = 20,         # temporal correlation length (days)
+  depth_corr = 15,        # depth correlation length (metres)
+  epsilon2  = 0.01,       # signal-to-noise ratio
+  max_depth = 200,
+  palette   = "odv"       # classic ODV rainbow
 )
 print(p)
 ```
@@ -119,18 +120,67 @@ methods paper.
 
 ## Contour tuning
 
+At build time:
+
 ```r
 diva_plot_odv(
   df, "Temp",
   time_corr        = 20,
   depth_corr       = 15,
-  add_contours     = TRUE,  # enable contour overlay
-  contour_binwidth = 2,     # contour lines every 2 units
-  label_binwidth   = 2,     # labels every 2 units
-  label_gap        = 0,     # skip parameter for label thinning
-  sample_points    = TRUE   # show observation locations
+  add_contours     = TRUE,
+  contour_binwidth = 2,          # contour lines every 2 units
+  contour_breaks   = c(20, 22),  # or explicit levels; overrides binwidth
+  label_binwidth   = 2,
+  label_gap        = 0,
+  sample_points    = TRUE
 )
 ```
+
+Or on a plot you already have — like `scale_fill_odv()`, this does not
+re-run DIVAnd:
+
+```r
+p <- diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15)
+
+p + odv_contours(breaks = c(20, 22, 24))      # explicit levels
+p + odv_contours(binwidth = 2)                # even spacing
+p + odv_contours(breaks = 22, labels = FALSE) # one unlabelled isotherm
+p + odv_contours_remove()                     # strip them entirely
+```
+
+`odv_contours()` replaces any contours already present rather than adding a
+second set, so it is safe to call repeatedly while tuning.
+
+## Colour mapping
+
+Ocean Data View's Color Mapping tab exposes two controls beyond the value
+range: **Median** and **Nonlinearity**. `scale_fill_odv()` reproduces their
+visual effect. Skewed fields — most nutrients, chlorophyll, cell counts —
+otherwise spend most of the palette on a sparse tail.
+
+```r
+p <- diva_plot_odv(df, "PO4", time_corr = 15, depth_corr = 10,
+                   zlim = c(0, 2), fill_label = "PO4 (umol/kg)")
+
+# median  = where in the range the middle colour sits
+# nonlinearity = how hard to concentrate resolution there
+p + scale_fill_odv(median = 0.35, nonlinearity = 0.6)
+```
+
+Because `diva_plot_odv()` returns a plain ggplot object, adding the scale
+**does not re-run DIVAnd** — the interpolated grid is already in the plot.
+Recolouring is instant, so you can iterate the way you would drag the ODV
+sliders. The `zlim`, `palette` and `fill_label` of the host plot carry over
+automatically; pass them explicitly to override.
+
+The same two controls are available directly on `diva_plot_odv()` as
+`colour_median` and `colour_nonlinearity`. Both default to a linear mapping,
+so existing code is unaffected.
+
+Only the colour *stops* move — the data and the colourbar axis stay linear, so
+legend ticks remain evenly spaced and round-numbered while the colour
+distribution inside the bar becomes non-uniform. Contour placement is
+independent, as it is in ODV, and stays under `contour_binwidth`.
 
 ## Getting the grid data
 
