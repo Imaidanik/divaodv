@@ -22,6 +22,43 @@ utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value"))
                   "#0db5e6", "#7139fe", "#d16cfa")
 
 
+# ── Cyclic-time helpers (annual climatology) ---------------------------------
+# Pure R so they can be unit-tested without a Julia session.
+
+#' Full-year cyclic time grid in year units (internal)
+#'
+#' Returns \code{n} points spanning \[0, 1) with the wrap point excluded, i.e.
+#' \code{0, 1/n, ..., (n-1)/n}. DIVAnd requires no duplicated endpoint for a
+#' cyclic dimension (grid point 1 is the neighbour of grid point n).
+#' @noRd
+.diva_cyclic_time_grid <- function(n) {
+  n <- as.integer(n)
+  seq(0, 1, length.out = n + 1L)[seq_len(n)]
+}
+
+#' moddim vector for (depth, time) with cyclic time (internal)
+#'
+#' Depth non-cyclic, time cyclic over its full \code{n_time}-point period.
+#' @noRd
+.diva_cyclic_moddim <- function(n_time) as.integer(c(0L, n_time))
+
+#' Warn if observations were not folded onto a single reference year (internal)
+#'
+#' \code{cyclic_time = TRUE} on unfolded multi-year data fails silently: the
+#' wrap stitches the earliest and latest calendar days of the whole record
+#' together. A span over one year is the signal that folding was skipped.
+#' @noRd
+.diva_assert_folded <- function(min_date, max_date) {
+  span_days <- as.numeric(max_date - min_date)
+  if (span_days > 366)
+    warning("cyclic_time = TRUE expects observations folded onto one reference ",
+            "year; Date span is ", round(span_days), " days (> 366). If the ",
+            "data were not folded, the cyclic wrap will stitch the earliest and ",
+            "latest calendar days of the whole record together.", call. = FALSE)
+  invisible(span_days)
+}
+
+
 # -----------------------------------------------------------------------------
 #' ODV-style depth-time section plot
 #'
@@ -61,6 +98,11 @@ utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value"))
 #'   dots. Default TRUE.
 #' @param add_contours Logical. Add contour lines and contour labels to the
 #'   plot. Default FALSE.
+#' @param cyclic_time Logical. Treat the time axis as cyclic over a single
+#'   year, so December and January share correlation support (DIVAnd
+#'   \code{moddim}). Requires observations folded onto one reference year
+#'   (same month/day, year discarded); the x-axis is then drawn as months and
+#'   a \code{Date} span over one year triggers a warning. Default FALSE.
 #' @param zlim Numeric(2) or NULL. Colour scale limits.
 #' @param title Character or NULL. Plot title; defaults to \code{var}.
 #' @param y_label Character. Y-axis label. Default \code{"Depth (m)"}.
@@ -95,6 +137,7 @@ diva_plot_odv <- function(df,
                           label_gap        = 0,
                           sample_points    = TRUE,
                           add_contours     = FALSE,
+                          cyclic_time      = FALSE,
                           zlim             = NULL,
                           title            = NULL,
                           y_label          = "Depth (m)",
@@ -142,11 +185,36 @@ diva_plot_odv <- function(df,
   if (is.null(max_depth))
     max_depth <- ceiling(max(dat$depth) / 10) * 10
 
-  n_depth     <- max(10L, as.integer(floor(max_depth / depth_resolution)) + 1L)
-  n_time      <- max(20L, as.integer(ceiling(date_span_years * time_resolution)))
-  scaled_time <- as.numeric(dat$Date - min_date_r) / 365.0
-  max_scaled  <- max(scaled_time)
+  n_depth      <- max(10L, as.integer(floor(max_depth / depth_resolution)) + 1L)
   time_corr_yr <- time_corr / 365.0
+
+  if (cyclic_time) {
+    # Annual climatology: observations must be folded onto one reference year.
+    # The domain is the full year [0, 1) with the wrap point excluded, so
+    # December and January are neighbours (moddim set in the Julia block below).
+    # See docs/plans/2026-07-26-cyclic-time-climatology-design.md.
+    .diva_assert_folded(min_date_r, max_date_r)
+
+    ref_year   <- as.integer(format(min_date_r, "%Y"))
+    year_start <- as.Date(sprintf("%d-01-01", ref_year))
+    year_len   <- as.numeric(as.Date(sprintf("%d-01-01", ref_year + 1L)) - year_start)
+
+    n_time      <- max(20L, as.integer(round(time_resolution)))
+    scaled_time <- as.numeric(dat$Date - year_start) / year_len
+    max_scaled  <- 1.0
+
+    if (mask_beyond_corr) {
+      warning("mask_beyond_corr is not supported with cyclic_time = TRUE and ",
+              "will be ignored.", call. = FALSE)
+      mask_beyond_corr <- FALSE
+    }
+  } else {
+    year_start  <- min_date_r
+    year_len    <- 365.0
+    n_time      <- max(20L, as.integer(ceiling(date_span_years * time_resolution)))
+    scaled_time <- as.numeric(dat$Date - min_date_r) / 365.0
+    max_scaled  <- max(scaled_time)
+  }
 
   n_cells <- as.numeric(n_depth) * n_time
 
@@ -175,10 +243,18 @@ diva_plot_odv <- function(df,
   JuliaCall::julia_assign("_odv_len1",      as.numeric(depth_corr))
   JuliaCall::julia_assign("_odv_len2",      as.numeric(time_corr_yr))
   JuliaCall::julia_assign("_odv_eps2",      as.numeric(epsilon2))
+  JuliaCall::julia_assign("_odv_moddim",
+    if (cyclic_time) .diva_cyclic_moddim(n_time) else as.integer(c(0L, 0L)))
 
   # ── 5. Julia: build grid, compute metric tensor, normalise -----------------
   JuliaCall::julia_eval("_odv_depth_grid = collect(Float64, LinRange(0.0, _odv_max_depth, _odv_n_depth))")
-  JuliaCall::julia_eval("_odv_time_grid  = collect(Float64, LinRange(0.0, _odv_max_time,  _odv_n_time))")
+  if (cyclic_time) {
+    # Grid built in R via the unit-tested helper, then handed to Julia, so the
+    # tested sequence is exactly the one interpolated on.
+    JuliaCall::julia_assign("_odv_time_grid", .diva_cyclic_time_grid(n_time))
+  } else {
+    JuliaCall::julia_eval("_odv_time_grid  = collect(Float64, LinRange(0.0, _odv_max_time,  _odv_n_time))")
+  }
   JuliaCall::julia_eval("_odv_mask       = BitArray(ones(Bool, _odv_n_depth, _odv_n_time))")
 
   # pmn = inverse of grid spacing (points per unit length) in each dimension.
@@ -189,7 +265,12 @@ diva_plot_odv <- function(df,
   # interpreted on the physical grid. Using ones() here is WRONG and causes
   # vertical-stripe artefacts when the grid is not unit-spaced.
   JuliaCall::julia_eval("_odv_dz = _odv_n_depth > 1 ? _odv_max_depth / (_odv_n_depth - 1) : 1.0")
-  JuliaCall::julia_eval("_odv_dt = _odv_n_time  > 1 ? _odv_max_time  / (_odv_n_time  - 1) : 1.0")
+  if (cyclic_time) {
+    # Cyclic dimension: n intervals around the circle, so spacing = 1 / n_time.
+    JuliaCall::julia_eval("_odv_dt = 1.0 / _odv_n_time")
+  } else {
+    JuliaCall::julia_eval("_odv_dt = _odv_n_time  > 1 ? _odv_max_time  / (_odv_n_time  - 1) : 1.0")
+  }
   JuliaCall::julia_eval("_odv_pm = fill(1.0 / _odv_dz, _odv_n_depth, _odv_n_time)")
   JuliaCall::julia_eval("_odv_pn = fill(1.0 / _odv_dt, _odv_n_depth, _odv_n_time)")
   JuliaCall::julia_eval("_odv_pmn = (_odv_pm, _odv_pn)")
@@ -206,7 +287,7 @@ diva_plot_odv <- function(df,
 
   # ── 6. Julia: DIVAnd ------------------------------------------------------
   tryCatch(
-    JuliaCall::julia_eval("_odv_result = DIVAnd.DIVAndrun(_odv_mask, _odv_pmn, _odv_xi, _odv_x, _odv_f_norm, _odv_len, _odv_eps2)"),
+    JuliaCall::julia_eval("_odv_result = DIVAnd.DIVAndrun(_odv_mask, _odv_pmn, _odv_xi, _odv_x, _odv_f_norm, _odv_len, _odv_eps2; moddim = _odv_moddim)"),
     error = function(e) stop("DIVAnd failed for '", var, "': ", conditionMessage(e))
   )
   JuliaCall::julia_eval("_odv_rescaled = _odv_result[1] .* _odv_f_std .+ _odv_f_mean")
@@ -227,7 +308,7 @@ diva_plot_odv <- function(df,
     value   = JuliaCall::julia_eval("vec(_odv_final)")
   ) |>
     dplyr::mutate(
-      Date = min_date_r + time_yr * 365.0
+      Date = year_start + time_yr * year_len
     )
 
   # ── 9. Mask outside correlation envelope (optional) ----------------------
@@ -309,7 +390,13 @@ diva_plot_odv <- function(df,
 
     # Axes
     ggplot2::scale_y_reverse() +
-    ggplot2::scale_x_date(date_labels = "%b %Y", date_breaks = "1 year") +
+    {
+      if (cyclic_time) {
+        ggplot2::scale_x_date(date_labels = "%b", date_breaks = "1 month")
+      } else {
+        ggplot2::scale_x_date(date_labels = "%b %Y", date_breaks = "1 year")
+      }
+    } +
 
     # Labels
     ggplot2::labs(

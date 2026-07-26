@@ -342,6 +342,30 @@ diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
 Both routes build their layers with the same internal helper, so a plot's
 contours are identical whichever you use.
 
+## Annual climatology (cyclic time)
+
+For a seasonal climatology, fold every observation onto one reference year
+(keep month/day, discard the year) and set `cyclic_time = TRUE`. DIVAnd then
+treats the time axis as cyclic — December and January share correlation support,
+so the January/December seam and the edge relaxation are removed together. The
+x-axis is drawn as months.
+
+```{r}
+#| label: cyclic-time
+#| eval: false
+# Fold to a single reference year first (month/day preserved)
+folded <- df
+folded$Date <- as.Date(format(folded$Date, "2001-%m-%d"))
+
+diva_plot_odv(folded, "Temp",
+              time_corr = 30, depth_corr = 20, epsilon2 = 0.3,
+              cyclic_time = TRUE)
+```
+
+`cyclic_time = TRUE` expects folded input: a `Date` span longer than a year
+triggers a warning, since the cyclic wrap would otherwise stitch the earliest
+and latest calendar days of the whole record together.
+
 ## Extracting the grid
 
 Set `return_data = TRUE` to get the interpolated grid as a tibble instead of a

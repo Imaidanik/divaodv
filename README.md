@@ -29,6 +29,7 @@ observations onto a regular grid, then renders filled-contour sections with
 - **Observation overlay** showing original sampling locations as dots
 - **Flexible grid resolution** via `depth_resolution` and `time_resolution` parameters
 - **Returns a ggplot2 object** — fully customisable with standard ggplot layers
+- **Cyclic time** (`cyclic_time = TRUE`) for annual climatologies — folds the year so December and January share correlation support, removing the seam
 - **`return_data = TRUE`** mode to get the interpolated grid as a tibble for further analysis
 
 ## Prerequisites
@@ -204,6 +205,31 @@ odv_auto_map(grid$PO4, limits = c(0, 2))
 
 `diva_plot_odv(colour_median = "auto", colour_nonlinearity = "auto")` applies
 the same fit at build time.
+
+## Annual climatology (cyclic time)
+
+To build a seasonal climatology, fold every observation onto a single reference
+year (keep month/day, discard the year) and set `cyclic_time = TRUE`. The time
+axis then wraps: December and January share correlation support, so the seam
+between them — and the edge relaxation that comes with a non-periodic domain —
+is removed. The x-axis is drawn as months.
+
+```r
+# Fold to one reference year (keep month/day), then interpolate cyclically
+folded <- df
+folded$Date <- as.Date(format(folded$Date, "2001-%m-%d"))   # Feb 29 -> handle first
+
+diva_plot_odv(
+  folded, "Temp",
+  time_corr = 30, depth_corr = 20, epsilon2 = 0.3,
+  cyclic_time = TRUE
+)
+```
+
+`cyclic_time = TRUE` requires folded input: if the `Date` span exceeds one year
+the function warns, because on unfolded data the wrap would stitch the earliest
+and latest calendar days of the whole record together. `mask_beyond_corr` is not
+supported together with `cyclic_time` and is ignored if both are set.
 
 ## Getting the grid data
 
