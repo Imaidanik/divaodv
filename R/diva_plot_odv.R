@@ -15,7 +15,8 @@
 NULL
 
 # Suppress R CMD check NOTEs for column names used in NSE
-utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value"))
+utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value",
+                         "mask_metric"))
 
 # ODV rainbow palette — reversed for fill (cold = blue, warm = red)
 .odv_colours <- c("#feb483", "#d31f2a", "#ffc000", "#27ab19",
@@ -82,8 +83,14 @@ utils::globalVariables(c("Date", "Depth", "depth", "time_yr", "value"))
 #' @param log_constant Numeric. Constant added before log transform. Default 1e-10.
 #' @param palette Character or vector. \code{"odv"} (default), \code{"viridis"},
 #'   or a custom hex colour vector. Palette is always reversed for fill.
-#' @param mask_beyond_corr Logical. Mask cells outside the
-#'   ±\code{time_corr}-day observation envelope. Default FALSE.
+#' @param mask Character. Mask poorly-constrained grid nodes, ODV-style.
+#'   \code{"none"} (default), \code{"support"} (mask nodes whose nearest
+#'   observation is further than \code{mask_threshold} correlation lengths in
+#'   the anisotropic metric) or \code{"cpme"} (DIVAnd's clever poor man's
+#'   error estimate; costs one extra analysis).
+#' @param mask_threshold Numeric or NULL. Threshold for \code{mask}. NULL uses
+#'   the per-method default: 2 correlation lengths for \code{"support"}, 0.8
+#'   for \code{"cpme"}. Ignored when \code{mask = "none"}.
 #' @param contour_binwidth Numeric. Binwidth for \code{geom_contour} and
 #'   \code{geom_text_contour}. Default 1.
 #' @param contour_breaks Numeric vector or NULL. Explicit contour levels.
@@ -130,7 +137,8 @@ diva_plot_odv <- function(df,
                           time_resolution  = 365,
                           log_constant     = 1e-10,
                           palette          = "odv",
-                          mask_beyond_corr = FALSE,
+                          mask             = "none",
+                          mask_threshold   = NULL,
                           contour_binwidth = 1,
                           contour_breaks   = NULL,
                           label_binwidth   = NULL,
@@ -156,6 +164,10 @@ diva_plot_odv <- function(df,
 
   if (is.null(label_binwidth)) label_binwidth <- contour_binwidth
   if (is.null(fill_label))     fill_label     <- var
+
+  # Validate masking arguments before starting Julia, so bad input fails in
+  # milliseconds rather than after a full analysis.
+  mask_cfg <- .odv_mask_resolve(mask, mask_threshold)
 
   .diva_ensure_julia()
 
@@ -202,12 +214,6 @@ diva_plot_odv <- function(df,
     n_time      <- max(20L, as.integer(round(time_resolution)))
     scaled_time <- as.numeric(dat$Date - year_start) / year_len
     max_scaled  <- 1.0
-
-    if (mask_beyond_corr) {
-      warning("mask_beyond_corr is not supported with cyclic_time = TRUE and ",
-              "will be ignored.", call. = FALSE)
-      mask_beyond_corr <- FALSE
-    }
   } else {
     year_start  <- min_date_r
     year_len    <- 365.0
@@ -311,23 +317,30 @@ diva_plot_odv <- function(df,
       Date = year_start + time_yr * year_len
     )
 
-  # ── 9. Mask outside correlation envelope (optional) ----------------------
-  if (mask_beyond_corr) {
-    obs_dates     <- unique(as.Date(dat$Date))
-    allowed_dates <- lapply(obs_dates, function(d)
-      seq.Date(d - as.integer(time_corr), d + as.integer(time_corr), by = "day")
-    ) |> unlist() |> as.Date(origin = "1970-01-01") |> unique()
-    allowed_dates <- allowed_dates[
-      allowed_dates >= min_date_r & allowed_dates <= max_date_r
-    ]
-    grid_df <- grid_df |>
-      dplyr::mutate(value = dplyr::if_else(Date %in% allowed_dates, value, NA_real_))
-  }
-
   names(grid_df)[names(grid_df) == "value"] <- var
 
-  if (return_data)
-    return(dplyr::select(grid_df, Date, Depth, dplyr::all_of(var)))
+  # ── 9. ODV-style mask (support / cpme) -----------------------------------
+  # Before zlim below, so the colour range describes the displayed field.
+  # scaled_time, time_corr_yr and the [0, 1) cyclic grid share year units, so
+  # the anisotropic metric and the wrap period are consistent by construction.
+  grid_df <- .odv_apply_mask(
+    grid_df, var, mask_cfg,
+    obs_depth  = dat$depth,
+    obs_time   = scaled_time,
+    depth_corr = depth_corr,
+    time_corr  = time_corr_yr,
+    cyclic     = isTRUE(cyclic_time),
+    period     = 1,
+    verbose    = verbose
+  )
+
+  if (return_data) {
+    keep_cols <- c("Date", "Depth", var,
+                   if ("mask_metric" %in% names(grid_df)) "mask_metric")
+    out <- dplyr::select(grid_df, dplyr::all_of(keep_cols))
+    attr(out, "divaodv_mask") <- attr(grid_df, "divaodv_mask")
+    return(out)
+  }
 
   # ── 10. Sample-point reference tibble ------------------------------------
   sampled <- df |>

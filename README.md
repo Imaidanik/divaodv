@@ -26,6 +26,7 @@ observations onto a regular grid, then renders filled-contour sections with
 - **Post-hoc contour control** via `odv_contours()` / `odv_contours_remove()` — explicit levels or even spacing, set or stripped without re-interpolating
 - **ODV-style nonlinear colour mapping** via `scale_fill_odv()` — median and nonlinearity controls, applied without re-running DIVAnd
 - **Contour lines + labels** via `metR::geom_text_contour()` with adjustable binwidth and label density
+- **ODV-style masking** of poorly-constrained nodes — geometric (`"support"`) or DIVAnd's error field (`"cpme"`)
 - **Observation overlay** showing original sampling locations as dots
 - **Flexible grid resolution** via `depth_resolution` and `time_resolution` parameters
 - **Returns a ggplot2 object** — fully customisable with standard ggplot layers
@@ -228,8 +229,63 @@ diva_plot_odv(
 
 `cyclic_time = TRUE` requires folded input: if the `Date` span exceeds one year
 the function warns, because on unfolded data the wrap would stitch the earliest
-and latest calendar days of the whole record together. `mask_beyond_corr` is not
-supported together with `cyclic_time` and is ignored if both are set.
+and latest calendar days of the whole record together.
+
+## Masking poorly-constrained nodes
+
+ODV blanks grid nodes the observations don't support — the white pockets in a
+classic section plot. divaodv offers two criteria.
+
+```r
+# Geometric: mask nodes whose nearest observation is further than
+# `mask_threshold` correlation lengths, in the anisotropic metric.
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+              mask = "support", mask_threshold = 2)
+
+# DIVAnd's clever poor man's error estimate. Costs one extra analysis.
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+              mask = "cpme", mask_threshold = 0.8)
+```
+
+| method | threshold units | default | cost |
+|---|---|---|---|
+| `"support"` | correlation lengths | 2 | negligible (pure R geometry) |
+| `"cpme"` | dimensionless error in (0, 1) | 0.8 | one extra DIVAnd analysis |
+
+`"support"` asks a question about sampling geometry: *is there an observation
+nearby, measured in units of the correlation lengths you already chose?* Because
+the threshold is denominated in correlation lengths, it transfers between
+datasets and variables unchanged.
+
+`"cpme"` asks about the analysis instead, so it sees things geometry cannot —
+notably the interaction between `epsilon2` and the correlation lengths. Its
+default of 0.8 was calibrated by matching the fraction masked by `"support"` at
+its own default, on both a densely sampled record and one thinned threefold; the
+four resulting estimates spanned 0.027.
+
+**A small masked fraction is the correct outcome on well-sampled data.** The mask
+exists to blank regions the observations don't constrain; on a dense record there
+should be almost nothing to blank.
+
+### Re-thresholding without re-running
+
+`return_data = TRUE` adds a `mask_metric` column carrying the raw metric, so you
+can sweep thresholds without another DIVAnd call:
+
+```r
+grid <- diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+                      mask = "support", mask_threshold = 2,
+                      return_data = TRUE)
+
+sapply(c(0.5, 1, 1.5, 2), function(t) mean(grid$mask_metric > t))
+```
+
+For `"support"` the metric is exact out to twice the requested threshold and
+`Inf` beyond, so you can loosen a cut by up to a factor of two from one run. For
+`"cpme"` it is exact everywhere.
+
+With `cyclic_time = TRUE` the mask wraps at the December/January fold, so it
+stays continuous where the folded field is.
 
 ## Getting the grid data
 
