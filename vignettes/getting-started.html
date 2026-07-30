@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Ilia Maidanik">
-<meta name="dcterms.date" content="2026-07-26">
+<meta name="dcterms.date" content="2026-07-30">
 
 <title>Getting Started with divaodv</title>
 <style>
@@ -91,6 +91,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#colour-palettes" id="toc-colour-palettes" class="nav-link" data-scroll-target="#colour-palettes">Colour palettes</a></li>
   <li><a href="#sec-colour-mapping" id="toc-sec-colour-mapping" class="nav-link" data-scroll-target="#sec-colour-mapping">ODV-style colour mapping</a></li>
   <li><a href="#sec-contours" id="toc-sec-contours" class="nav-link" data-scroll-target="#sec-contours">Contour control</a></li>
+  <li><a href="#annual-climatology-cyclic-time" id="toc-annual-climatology-cyclic-time" class="nav-link" data-scroll-target="#annual-climatology-cyclic-time">Annual climatology (cyclic time)</a></li>
+  <li><a href="#sec-masking" id="toc-sec-masking" class="nav-link" data-scroll-target="#sec-masking">Masking poorly-constrained nodes</a></li>
   <li><a href="#extracting-the-grid" id="toc-extracting-the-grid" class="nav-link" data-scroll-target="#extracting-the-grid">Extracting the grid</a></li>
   <li><a href="#multi-variable-workflows" id="toc-multi-variable-workflows" class="nav-link" data-scroll-target="#multi-variable-workflows">Multi-variable workflows</a></li>
   <li><a href="#how-the-metric-tensor-works" id="toc-how-the-metric-tensor-works" class="nav-link" data-scroll-target="#how-the-metric-tensor-works">How the metric tensor works</a></li>
@@ -118,7 +120,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">July 26, 2026</p>
+      <p class="date">July 30, 2026</p>
     </div>
   </div>
   
@@ -501,15 +503,53 @@ Figure&nbsp;6: Rising nonlinearity at a fixed median. No re-interpolation betwee
 <div class="sourceCode cell-code" id="cb50"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb50-1"><a href="#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diva_plot_odv</span>(df, <span class="st">"Temp"</span>, <span class="at">time_corr =</span> <span class="dv">20</span>, <span class="at">depth_corr =</span> <span class="dv">15</span>,</span>
 <span id="cb50-2"><a href="#cb50-2" aria-hidden="true" tabindex="-1"></a>              <span class="at">colour_median =</span> <span class="fl">0.35</span>, <span class="at">colour_nonlinearity =</span> <span class="fl">0.6</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<section id="sec-auto-colour" class="level3">
+<h3 class="anchored" data-anchor-id="sec-auto-colour">Automatic colour mapping</h3>
+<p>Rather than tuning <code>median</code> and <code>nonlinearity</code> by eye, <code>odv_auto_map()</code> derives both from the interpolated field. It treats the ODV transfer curve as a two-parameter fit to the data’s empirical distribution (histogram equalisation): the palette midpoint is placed at the field’s median, and the S-curve strength is chosen so the curve tracks the empirical CDF.</p>
+<p>For this temperature field the fit returns a median of 0.36 and a nonlinearity of 1. You can read those values off directly, or let the scale fit itself from the plot’s own grid with the <code>"auto"</code> sentinel — no re-interpolation, exactly as in <a href="#sec-colour-mapping" class="quarto-xref">Section&nbsp;9</a>:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>p <span class="ot">&lt;-</span> <span class="fu">diva_plot_odv</span>(df, <span class="st">"Temp"</span>, <span class="at">time_corr =</span> <span class="dv">20</span>, <span class="at">depth_corr =</span> <span class="dv">15</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[ODV] Temp | 2004-03-21 to 2014-12-15 (10.74 yr) | grid 201 x 3921 = 788,121 cells (dz=1m, dt=365/yr) | len=(15m, 0.055 yr) eps2=0.010</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15): Grid for
+'Temp' has 788,121 cells -- consider increasing depth_resolution or decreasing
+time_resolution.</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>p <span class="sc">+</span> <span class="fu">scale_fill_odv</span>(<span class="at">median =</span> <span class="st">"auto"</span>, <span class="at">nonlinearity =</span> <span class="st">"auto"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Scale for fill is already present.
+Adding another scale for fill, which will replace the existing scale.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 9 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-colour-auto" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-colour-auto-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="getting-started_files/figure-html/fig-colour-auto-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-colour-auto-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;7: Temperature section with an automatically fitted ODV colour map.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><code>"auto"</code> works per parameter: fix one and fit the other, e.g. <code>scale_fill_odv(median = 0.5, nonlinearity = "auto")</code>. <code>diva_plot_odv()</code> accepts the same sentinel via <code>colour_median</code> / <code>colour_nonlinearity</code>. For an optimiser-free estimate on very large grids, pass <code>method = "iqr"</code> to <code>odv_auto_map()</code>.</p>
+</section>
 </section>
 <section id="sec-contours" class="level2">
 <h2 class="anchored" data-anchor-id="sec-contours">Contour control</h2>
 <p>Contours are off by default. They can be set when the plot is built, or added to a finished plot the same way colour mapping is — and for the same reason, adding them costs nothing:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a>cn_breaks <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="dv">22</span>, <span class="dv">24</span>, <span class="dv">26</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a>cn_breaks <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="dv">22</span>, <span class="dv">24</span>, <span class="dv">26</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb52"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a>p <span class="sc">+</span> <span class="fu">odv_contours</span>(<span class="at">breaks =</span> cn_breaks)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a>p <span class="sc">+</span> <span class="fu">odv_contours</span>(<span class="at">breaks =</span> cn_breaks)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: Removed 9 rows containing missing values or values outside the scale range
 (`geom_point()`).</code></pre>
@@ -521,7 +561,7 @@ Figure&nbsp;6: Rising nonlinearity at a fixed median. No re-interpolation betwee
 <img src="getting-started_files/figure-html/fig-contours-breaks-1.png" class="img-fluid figure-img" width="1500">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-contours-breaks-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;7: Explicit contour levels at 20, 22, 24, 26.
+Figure&nbsp;8: Explicit contour levels at 20, 22, 24, 26.
 </figcaption>
 </figure>
 </div>
@@ -530,7 +570,7 @@ Figure&nbsp;7: Explicit contour levels at 20, 22, 24, 26.
 <p><code>p</code> here is the plot interpolated back in <a href="#sec-colour-mapping" class="quarto-xref">Section&nbsp;9</a>. Contours at 20, 22, 24, 26 °C are drawn onto it without touching DIVAnd.</p>
 <p>Even spacing works too, and the two forms are mutually exclusive — <code>breaks</code> wins if you pass both, with a warning:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb54"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb54-1"><a href="#cb54-1" aria-hidden="true" tabindex="-1"></a>p <span class="sc">+</span> <span class="fu">odv_contours</span>(<span class="at">binwidth =</span> <span class="dv">2</span>, <span class="at">labels =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb60"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb60-1"><a href="#cb60-1" aria-hidden="true" tabindex="-1"></a>p <span class="sc">+</span> <span class="fu">odv_contours</span>(<span class="at">binwidth =</span> <span class="dv">2</span>, <span class="at">labels =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: Removed 9 rows containing missing values or values outside the scale range
 (`geom_point()`).</code></pre>
@@ -542,7 +582,7 @@ Figure&nbsp;7: Explicit contour levels at 20, 22, 24, 26.
 <img src="getting-started_files/figure-html/fig-contours-binwidth-1.png" class="img-fluid figure-img" width="1500">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-contours-binwidth-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;8: Even contour spacing at 2 °C intervals, labels suppressed.
+Figure&nbsp;9: Even contour spacing at 2 °C intervals, labels suppressed.
 </figcaption>
 </figure>
 </div>
@@ -550,7 +590,7 @@ Figure&nbsp;8: Even contour spacing at 2 °C intervals, labels suppressed.
 </div>
 <p><code>odv_contours()</code> <em>replaces</em> whatever contours are already on the plot rather than adding a second set, so you can call it repeatedly while tuning without accumulating layers. To take them off entirely:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb56"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb56-1"><a href="#cb56-1" aria-hidden="true" tabindex="-1"></a>p <span class="sc">+</span> <span class="fu">odv_contours</span>(<span class="at">breaks =</span> cn_breaks) <span class="sc">+</span> <span class="fu">odv_contours_remove</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb62"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb62-1"><a href="#cb62-1" aria-hidden="true" tabindex="-1"></a>p <span class="sc">+</span> <span class="fu">odv_contours</span>(<span class="at">breaks =</span> cn_breaks) <span class="sc">+</span> <span class="fu">odv_contours_remove</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>Warning: Removed 9 rows containing missing values or values outside the scale range
 (`geom_point()`).</code></pre>
@@ -562,7 +602,7 @@ Figure&nbsp;8: Even contour spacing at 2 °C intervals, labels suppressed.
 <img src="getting-started_files/figure-html/fig-contours-removed-1.png" class="img-fluid figure-img" width="1500">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-contours-removed-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;9: Contours stripped; raster, sample points, scales and theme untouched.
+Figure&nbsp;10: Contours stripped; raster, sample points, scales and theme untouched.
 </figcaption>
 </figure>
 </div>
@@ -571,17 +611,230 @@ Figure&nbsp;9: Contours stripped; raster, sample points, scales and theme untouc
 <p>Removal is by geom class, so contour layers you added by hand come off too.</p>
 <p>Contours can also be fixed at build time, which is the right place for them once you have settled on levels:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb58"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb58-1"><a href="#cb58-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diva_plot_odv</span>(df, <span class="st">"Temp"</span>, <span class="at">time_corr =</span> <span class="dv">20</span>, <span class="at">depth_corr =</span> <span class="dv">15</span>,</span>
-<span id="cb58-2"><a href="#cb58-2" aria-hidden="true" tabindex="-1"></a>              <span class="at">add_contours =</span> <span class="cn">TRUE</span>, <span class="at">contour_breaks =</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="dv">22</span>, <span class="dv">24</span>, <span class="dv">26</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb64"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb64-1"><a href="#cb64-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diva_plot_odv</span>(df, <span class="st">"Temp"</span>, <span class="at">time_corr =</span> <span class="dv">20</span>, <span class="at">depth_corr =</span> <span class="dv">15</span>,</span>
+<span id="cb64-2"><a href="#cb64-2" aria-hidden="true" tabindex="-1"></a>              <span class="at">add_contours =</span> <span class="cn">TRUE</span>, <span class="at">contour_breaks =</span> <span class="fu">c</span>(<span class="dv">20</span>, <span class="dv">22</span>, <span class="dv">24</span>, <span class="dv">26</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[divaodv] Initialising Julia + DIVAnd (first call this session)...</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Julia version 1.10.8 at location C:\Users\ILIAMA~1\AppData\Local\Programs\JULIA-~1.8\bin will be used.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading setup script for JuliaCall...</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Finish loading setup script for JuliaCall.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[divaodv] Julia ready.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[ODV] Temp | 2004-03-21 to 2014-12-15 (10.74 yr) | grid 201 x 3921 = 788,121 cells (dz=1m, dt=365/yr) | len=(15m, 0.055 yr) eps2=0.010</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+add_contours = TRUE, : Grid for 'Temp' has 788,121 cells -- consider increasing
+depth_resolution or decreasing time_resolution.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 9 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="getting-started_files/figure-html/contours-inline-1.png" class="img-fluid figure-img" width="1500"></p>
+<figcaption>Manual Contours</figcaption>
+</figure>
+</div>
+</div>
 </div>
 <p>Both routes build their layers with the same internal helper, so a plot’s contours are identical whichever you use.</p>
+</section>
+<section id="annual-climatology-cyclic-time" class="level2">
+<h2 class="anchored" data-anchor-id="annual-climatology-cyclic-time">Annual climatology (cyclic time)</h2>
+<p>For a seasonal climatology, fold every observation onto one reference year (keep month/day, discard the year) and set <code>cyclic_time = TRUE</code>. DIVAnd then treats the time axis as cyclic — December and January share correlation support, so the January/December seam and the edge relaxation are removed together. The x-axis is drawn as months.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb73"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb73-1"><a href="#cb73-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fold to a single reference year first (month/day preserved)</span></span>
+<span id="cb73-2"><a href="#cb73-2" aria-hidden="true" tabindex="-1"></a>folded <span class="ot">&lt;-</span> df</span>
+<span id="cb73-3"><a href="#cb73-3" aria-hidden="true" tabindex="-1"></a>folded<span class="sc">$</span>Date <span class="ot">&lt;-</span> <span class="fu">as.Date</span>(<span class="fu">format</span>(folded<span class="sc">$</span>Date, <span class="st">"2001-%m-%d"</span>))</span>
+<span id="cb73-4"><a href="#cb73-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb73-5"><a href="#cb73-5" aria-hidden="true" tabindex="-1"></a><span class="fu">diva_plot_odv</span>(folded, <span class="st">"Temp"</span>,</span>
+<span id="cb73-6"><a href="#cb73-6" aria-hidden="true" tabindex="-1"></a>              <span class="at">time_corr =</span> <span class="dv">30</span>, <span class="at">depth_corr =</span> <span class="dv">20</span>, <span class="at">epsilon2 =</span> <span class="fl">0.3</span>,</span>
+<span id="cb73-7"><a href="#cb73-7" aria-hidden="true" tabindex="-1"></a>              <span class="at">cyclic_time =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[divaodv] Initialising Julia + DIVAnd (first call this session)...</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Julia version 1.10.8 at location C:\Users\ILIAMA~1\AppData\Local\Programs\JULIA-~1.8\bin will be used.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading setup script for JuliaCall...</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Finish loading setup script for JuliaCall.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[divaodv] Julia ready.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[ODV] Temp | 2001-01-12 to 2001-12-30 (0.96 yr) | grid 201 x 365 = 73,365 cells (dz=1m, dt=365/yr) | len=(20m, 0.082 yr) eps2=0.300</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 9 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="getting-started_files/figure-html/cyclic-time-1.png" class="img-fluid figure-img" width="1500"></p>
+<figcaption>Seasonal climatology with a cyclic time axis.</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p><code>cyclic_time = TRUE</code> expects folded input: a <code>Date</code> span longer than a year triggers a warning, since the cyclic wrap would otherwise stitch the earliest and latest calendar days of the whole record together.</p>
+</section>
+<section id="sec-masking" class="level2">
+<h2 class="anchored" data-anchor-id="sec-masking">Masking poorly-constrained nodes</h2>
+<p>ODV blanks nodes the observations don’t support. <code>mask = "support"</code> masks nodes whose nearest observation is further than <code>mask_threshold</code> correlation lengths away, measured in the anisotropic metric set by <code>time_corr</code> and <code>depth_corr</code>. Because the threshold is in correlation lengths, it means the same thing across datasets and variables.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb81"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb81-1"><a href="#cb81-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diva_plot_odv</span>(df, <span class="st">"Temp"</span>, <span class="at">time_corr =</span> <span class="dv">20</span>, <span class="at">depth_corr =</span> <span class="dv">15</span>,</span>
+<span id="cb81-2"><a href="#cb81-2" aria-hidden="true" tabindex="-1"></a>              <span class="at">max_depth =</span> <span class="dv">200</span>, <span class="at">mask =</span> <span class="st">"support"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[divaodv] Initialising Julia + DIVAnd (first call this session)...</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Julia version 1.10.8 at location C:\Users\ILIAMA~1\AppData\Local\Programs\JULIA-~1.8\bin will be used.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading setup script for JuliaCall...</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Finish loading setup script for JuliaCall.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[divaodv] Julia ready.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[ODV] Temp | 2004-03-21 to 2014-12-15 (10.74 yr) | grid 201 x 3921 = 788,121 cells (dz=1m, dt=365/yr) | len=(15m, 0.055 yr) eps2=0.010</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15, max_depth
+= 200, : Grid for 'Temp' has 788,121 cells -- consider increasing
+depth_resolution or decreasing time_resolution.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[ODV] mask = support (threshold 2) | 0.2% of nodes masked</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Removed 9 rows containing missing values or values outside the scale range
+(`geom_point()`).</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-mask-support" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-mask-support-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="getting-started_files/figure-html/fig-mask-support-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-mask-support-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;11: Temperature section with the default support mask.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Almost nothing is masked — 0.2% of nodes. That is the correct outcome, not a failure. This record has 127 casts at a median spacing of 29 days against a 20-day correlation length, so consecutive casts’ envelopes overlap and there is essentially nothing the analysis is inventing. Tightening to one correlation length masks 13.7%.</p>
+<p>To see the mask working, thin the record until it is genuinely sparse:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb91"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb91-1"><a href="#cb91-1" aria-hidden="true" tabindex="-1"></a>casts   <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">unique</span>(df<span class="sc">$</span>Date[<span class="sc">!</span><span class="fu">is.na</span>(df<span class="sc">$</span>Temp) <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">is.na</span>(df<span class="sc">$</span>Date)]))</span>
+<span id="cb91-2"><a href="#cb91-2" aria-hidden="true" tabindex="-1"></a>df_thin <span class="ot">&lt;-</span> df[df<span class="sc">$</span>Date <span class="sc">%in%</span> casts[<span class="fu">seq</span>(<span class="dv">1</span>, <span class="fu">length</span>(casts), <span class="at">by =</span> <span class="dv">3</span>)], ]</span>
+<span id="cb91-3"><a href="#cb91-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb91-4"><a href="#cb91-4" aria-hidden="true" tabindex="-1"></a><span class="fu">diva_plot_odv</span>(df_thin, <span class="st">"Temp"</span>, <span class="at">time_corr =</span> <span class="dv">20</span>, <span class="at">depth_corr =</span> <span class="dv">15</span>,</span>
+<span id="cb91-5"><a href="#cb91-5" aria-hidden="true" tabindex="-1"></a>              <span class="at">max_depth =</span> <span class="dv">200</span>, <span class="at">mask =</span> <span class="st">"support"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[ODV] Temp | 2004-03-21 to 2014-12-15 (10.74 yr) | grid 201 x 3921 = 788,121 cells (dz=1m, dt=365/yr) | len=(15m, 0.055 yr) eps2=0.010</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in diva_plot_odv(df_thin, "Temp", time_corr = 20, depth_corr = 15, :
+Grid for 'Temp' has 788,121 cells -- consider increasing depth_resolution or
+decreasing time_resolution.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[ODV] mask = support (threshold 2) | 19.0% of nodes masked</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-mask-thinned" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-mask-thinned-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="getting-started_files/figure-html/fig-mask-thinned-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-mask-thinned-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;12: The same section from every third cast. White cells are masked.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>At 43 casts and a median gap of 91 days, 19% of nodes are masked, and the white pockets fall between casts and below the deepest samples — exactly where the analysis has no information.</p>
+<section id="the-error-based-alternative" class="level3">
+<h3 class="anchored" data-anchor-id="the-error-based-alternative">The error-based alternative</h3>
+<p><code>mask = "cpme"</code> uses DIVAnd’s clever poor man’s error estimate instead of geometry. It costs one extra analysis, and its threshold is a dimensionless error in (0, 1) rather than a distance:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb95"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb95-1"><a href="#cb95-1" aria-hidden="true" tabindex="-1"></a><span class="fu">diva_plot_odv</span>(df_thin, <span class="st">"Temp"</span>, <span class="at">time_corr =</span> <span class="dv">20</span>, <span class="at">depth_corr =</span> <span class="dv">15</span>,</span>
+<span id="cb95-2"><a href="#cb95-2" aria-hidden="true" tabindex="-1"></a>              <span class="at">max_depth =</span> <span class="dv">200</span>, <span class="at">mask =</span> <span class="st">"cpme"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[ODV] Temp | 2004-03-21 to 2014-12-15 (10.74 yr) | grid 201 x 3921 = 788,121 cells (dz=1m, dt=365/yr) | len=(15m, 0.055 yr) eps2=0.010</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning in diva_plot_odv(df_thin, "Temp", time_corr = 20, depth_corr = 15, :
+Grid for 'Temp' has 788,121 cells -- consider increasing depth_resolution or
+decreasing time_resolution.</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>[ODV] mask = cpme (threshold 0.8) | 22.7% of nodes masked</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-mask-cpme" class="quarto-figure quarto-figure-center quarto-float anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-mask-cpme-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="getting-started_files/figure-html/fig-mask-cpme-1.png" class="img-fluid figure-img" width="1500">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-mask-cpme-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;13: The thinned section masked by the DIVAnd error field.
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<p>Because it looks at the analysis rather than at observation positions, <code>cpme</code> responds to things geometry cannot see — in particular the interaction between <code>epsilon2</code> and the correlation lengths. Its default of 0.8 was calibrated against <code>"support"</code> at its default.</p>
+</section>
+<section id="sweeping-thresholds-without-re-running" class="level3">
+<h3 class="anchored" data-anchor-id="sweeping-thresholds-without-re-running">Sweeping thresholds without re-running</h3>
+<p><code>return_data = TRUE</code> adds a <code>mask_metric</code> column holding the raw metric, so choosing a threshold costs no DIVAnd time:</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb99"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb99-1"><a href="#cb99-1" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
+<span id="cb99-2"><a href="#cb99-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">threshold =</span> <span class="fu">c</span>(<span class="fl">0.5</span>, <span class="dv">1</span>, <span class="fl">1.5</span>, <span class="dv">2</span>),</span>
+<span id="cb99-3"><a href="#cb99-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">masked    =</span> <span class="fu">sapply</span>(<span class="fu">c</span>(<span class="fl">0.5</span>, <span class="dv">1</span>, <span class="fl">1.5</span>, <span class="dv">2</span>),</span>
+<span id="cb99-4"><a href="#cb99-4" aria-hidden="true" tabindex="-1"></a>                     <span class="cf">function</span>(t) <span class="fu">mean</span>(grid_thin<span class="sc">$</span>mask_metric <span class="sc">&gt;</span> t))</span>
+<span id="cb99-5"><a href="#cb99-5" aria-hidden="true" tabindex="-1"></a>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  threshold    masked
+1       0.5 0.8731870
+2       1.0 0.6240831
+3       1.5 0.4014092
+4       2.0 0.1899962</code></pre>
+</div>
+</div>
+<p>For <code>"support"</code> the metric is exact out to twice the threshold you requested and <code>Inf</code> beyond, so you can loosen the cut by up to a factor of two from a single run. For <code>"cpme"</code> it is exact everywhere. With <code>cyclic_time = TRUE</code> the mask wraps at the year boundary, so it stays continuous where the folded field is.</p>
+</section>
 </section>
 <section id="extracting-the-grid" class="level2">
 <h2 class="anchored" data-anchor-id="extracting-the-grid">Extracting the grid</h2>
 <p>Set <code>return_data = TRUE</code> to get the interpolated grid as a tibble instead of a plot — useful for further analysis or custom visualisation:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a>grid <span class="ot">&lt;-</span> <span class="fu">diva_plot_odv</span>(df, <span class="st">"Temp"</span>, <span class="at">time_corr =</span> <span class="dv">20</span>, <span class="at">depth_corr =</span> <span class="dv">15</span>,</span>
-<span id="cb59-2"><a href="#cb59-2" aria-hidden="true" tabindex="-1"></a>                      <span class="at">return_data =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb101"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb101-1"><a href="#cb101-1" aria-hidden="true" tabindex="-1"></a>grid <span class="ot">&lt;-</span> <span class="fu">diva_plot_odv</span>(df, <span class="st">"Temp"</span>, <span class="at">time_corr =</span> <span class="dv">20</span>, <span class="at">depth_corr =</span> <span class="dv">15</span>,</span>
+<span id="cb101-2"><a href="#cb101-2" aria-hidden="true" tabindex="-1"></a>                      <span class="at">return_data =</span> <span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stderr">
 <pre><code>[divaodv] Initialising Julia + DIVAnd (first call this session)...</code></pre>
 </div>
@@ -605,7 +858,7 @@ Figure&nbsp;9: Contours stripped; raster, sample points, scales and theme untouc
 return_data = TRUE): Grid for 'Temp' has 788,121 cells -- consider increasing
 depth_resolution or decreasing time_resolution.</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(grid)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb109"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb109-1"><a href="#cb109-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(grid)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code># A tibble: 6 × 3
   Date       Depth  Temp
@@ -623,22 +876,22 @@ depth_resolution or decreasing time_resolution.</code></pre>
 <h2 class="anchored" data-anchor-id="multi-variable-workflows">Multi-variable workflows</h2>
 <p>For projects with many variables, use <code>diva_variable_config()</code> to create reusable parameter sets:</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load the 12-variable NMP defaults</span></span>
-<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>cfg <span class="ot">&lt;-</span> <span class="fu">nmp_default_config</span>()</span>
-<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot each variable</span></span>
-<span id="cb69-5"><a href="#cb69-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> <span class="fu">names</span>(cfg)) {</span>
-<span id="cb69-6"><a href="#cb69-6" aria-hidden="true" tabindex="-1"></a>  cv <span class="ot">&lt;-</span> cfg[[v]]</span>
-<span id="cb69-7"><a href="#cb69-7" aria-hidden="true" tabindex="-1"></a>  p <span class="ot">&lt;-</span> <span class="fu">diva_plot_odv</span>(</span>
-<span id="cb69-8"><a href="#cb69-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">df         =</span> my_data,</span>
-<span id="cb69-9"><a href="#cb69-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">var        =</span> cv<span class="sc">$</span>var,</span>
-<span id="cb69-10"><a href="#cb69-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">time_corr  =</span> cv<span class="sc">$</span>time_corr,</span>
-<span id="cb69-11"><a href="#cb69-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">depth_corr =</span> cv<span class="sc">$</span>depth_corr,</span>
-<span id="cb69-12"><a href="#cb69-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">epsilon2   =</span> cv<span class="sc">$</span>epsilon2,</span>
-<span id="cb69-13"><a href="#cb69-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">transform  =</span> cv<span class="sc">$</span>transform</span>
-<span id="cb69-14"><a href="#cb69-14" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb69-15"><a href="#cb69-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(p)</span>
-<span id="cb69-16"><a href="#cb69-16" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb111"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb111-1"><a href="#cb111-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load the 12-variable NMP defaults</span></span>
+<span id="cb111-2"><a href="#cb111-2" aria-hidden="true" tabindex="-1"></a>cfg <span class="ot">&lt;-</span> <span class="fu">nmp_default_config</span>()</span>
+<span id="cb111-3"><a href="#cb111-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb111-4"><a href="#cb111-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot each variable</span></span>
+<span id="cb111-5"><a href="#cb111-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> <span class="fu">names</span>(cfg)) {</span>
+<span id="cb111-6"><a href="#cb111-6" aria-hidden="true" tabindex="-1"></a>  cv <span class="ot">&lt;-</span> cfg[[v]]</span>
+<span id="cb111-7"><a href="#cb111-7" aria-hidden="true" tabindex="-1"></a>  p <span class="ot">&lt;-</span> <span class="fu">diva_plot_odv</span>(</span>
+<span id="cb111-8"><a href="#cb111-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">df         =</span> my_data,</span>
+<span id="cb111-9"><a href="#cb111-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">var        =</span> cv<span class="sc">$</span>var,</span>
+<span id="cb111-10"><a href="#cb111-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">time_corr  =</span> cv<span class="sc">$</span>time_corr,</span>
+<span id="cb111-11"><a href="#cb111-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">depth_corr =</span> cv<span class="sc">$</span>depth_corr,</span>
+<span id="cb111-12"><a href="#cb111-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">epsilon2   =</span> cv<span class="sc">$</span>epsilon2,</span>
+<span id="cb111-13"><a href="#cb111-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">transform  =</span> cv<span class="sc">$</span>transform</span>
+<span id="cb111-14"><a href="#cb111-14" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb111-15"><a href="#cb111-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(p)</span>
+<span id="cb111-16"><a href="#cb111-16" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="how-the-metric-tensor-works" class="level2">

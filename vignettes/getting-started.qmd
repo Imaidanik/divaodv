@@ -334,7 +334,7 @@ once you have settled on levels:
 
 ```{r}
 #| label: contours-inline
-#| eval: false
+#| fig-cap: "Manual Contours"
 diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
               add_contours = TRUE, contour_breaks = c(20, 22, 24, 26))
 ```
@@ -352,7 +352,7 @@ x-axis is drawn as months.
 
 ```{r}
 #| label: cyclic-time
-#| eval: false
+#| fig-cap: "Seasonal climatology with a cyclic time axis."
 # Fold to a single reference year first (month/day preserved)
 folded <- df
 folded$Date <- as.Date(format(folded$Date, "2001-%m-%d"))
@@ -365,6 +365,113 @@ diva_plot_odv(folded, "Temp",
 `cyclic_time = TRUE` expects folded input: a `Date` span longer than a year
 triggers a warning, since the cyclic wrap would otherwise stitch the earliest
 and latest calendar days of the whole record together.
+
+## Masking poorly-constrained nodes {#sec-masking}
+
+ODV blanks nodes the observations don't support. `mask = "support"` masks nodes
+whose nearest observation is further than `mask_threshold` correlation lengths
+away, measured in the anisotropic metric set by `time_corr` and `depth_corr`.
+Because the threshold is in correlation lengths, it means the same thing across
+datasets and variables.
+
+```{r}
+#| label: fig-mask-support
+#| fig-cap: "Temperature section with the default support mask."
+diva_plot_odv(df, "Temp", time_corr = 20, depth_corr = 15,
+              max_depth = 200, mask = "support")
+```
+
+```{r}
+#| label: mask-vals
+#| include: false
+
+grid_masked <- diva_plot_odv(
+  df, "Temp", time_corr = 20, depth_corr = 15, max_depth = 200,
+  mask = "support", mask_threshold = 2,
+  return_data = TRUE, verbose = FALSE
+)
+
+ok_obs       <- !is.na(df$Temp) & !is.na(df$Date)
+mask_frac    <- round(100 * mean(grid_masked$mask_metric > 2), 1)
+mask_frac_1  <- round(100 * mean(grid_masked$mask_metric > 1), 1)
+mask_n_casts <- length(unique(df$Date[ok_obs]))
+mask_gap     <- round(as.numeric(median(diff(sort(unique(df$Date[ok_obs]))))), 0)
+```
+
+Almost nothing is masked --- `r mask_frac`% of nodes. That is the correct
+outcome, not a failure. This record has `r mask_n_casts` casts at a median
+spacing of `r mask_gap` days against a 20-day correlation length, so consecutive
+casts' envelopes overlap and there is essentially nothing the analysis is
+inventing. Tightening to one correlation length masks `r mask_frac_1`%.
+
+To see the mask working, thin the record until it is genuinely sparse:
+
+```{r}
+#| label: fig-mask-thinned
+#| fig-cap: "The same section from every third cast. White cells are masked."
+casts   <- sort(unique(df$Date[!is.na(df$Temp) & !is.na(df$Date)]))
+df_thin <- df[df$Date %in% casts[seq(1, length(casts), by = 3)], ]
+
+diva_plot_odv(df_thin, "Temp", time_corr = 20, depth_corr = 15,
+              max_depth = 200, mask = "support")
+```
+
+```{r}
+#| label: mask-thin-vals
+#| include: false
+
+grid_thin <- diva_plot_odv(
+  df_thin, "Temp", time_corr = 20, depth_corr = 15, max_depth = 200,
+  mask = "support", mask_threshold = 2,
+  return_data = TRUE, verbose = FALSE
+)
+
+thin_frac  <- round(100 * mean(grid_thin$mask_metric > 2), 1)
+thin_casts <- length(unique(df_thin$Date[!is.na(df_thin$Temp)]))
+thin_gap   <- round(as.numeric(median(diff(sort(
+  unique(df_thin$Date[!is.na(df_thin$Temp)]))))), 0)
+```
+
+At `r thin_casts` casts and a median gap of `r thin_gap` days, `r thin_frac`% of
+nodes are masked, and the white pockets fall between casts and below the deepest
+samples --- exactly where the analysis has no information.
+
+### The error-based alternative
+
+`mask = "cpme"` uses DIVAnd's clever poor man's error estimate instead of
+geometry. It costs one extra analysis, and its threshold is a dimensionless error
+in (0, 1) rather than a distance:
+
+```{r}
+#| label: fig-mask-cpme
+#| fig-cap: "The thinned section masked by the DIVAnd error field."
+diva_plot_odv(df_thin, "Temp", time_corr = 20, depth_corr = 15,
+              max_depth = 200, mask = "cpme")
+```
+
+Because it looks at the analysis rather than at observation positions, `cpme`
+responds to things geometry cannot see --- in particular the interaction between
+`epsilon2` and the correlation lengths. Its default of 0.8 was calibrated against
+`"support"` at its default.
+
+### Sweeping thresholds without re-running
+
+`return_data = TRUE` adds a `mask_metric` column holding the raw metric, so
+choosing a threshold costs no DIVAnd time:
+
+```{r}
+#| label: mask-sweep
+data.frame(
+  threshold = c(0.5, 1, 1.5, 2),
+  masked    = sapply(c(0.5, 1, 1.5, 2),
+                     function(t) mean(grid_thin$mask_metric > t))
+)
+```
+
+For `"support"` the metric is exact out to twice the threshold you requested and
+`Inf` beyond, so you can loosen the cut by up to a factor of two from a single
+run. For `"cpme"` it is exact everywhere. With `cyclic_time = TRUE` the mask
+wraps at the year boundary, so it stays continuous where the folded field is.
 
 ## Extracting the grid
 
